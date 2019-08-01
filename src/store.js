@@ -59,7 +59,7 @@ export class Store {
     // bind commit and dispatch to self
     // 当前new出来的实例
     const store = this
-    // 对dispatch commit 做一层封装，改变上下文
+    // 对实例方法下的dispatch commit 做一层封装，改变上下文
     // 在dispatch, commit 使用this就是store实例
     const { dispatch, commit } = this
     this.dispatch = function boundDispatch (type, payload) {
@@ -133,6 +133,7 @@ export class Store {
       })
     })
     // 有监听的时候 调用所有的 把mutation  state当做参数传入
+    // commit之后执行的 state已经改变了
     this._subscribers.forEach(sub => sub(mutation, this.state))
 
     if (
@@ -212,6 +213,7 @@ export class Store {
     // path必须是一个长度大于0的数组
     if (process.env.NODE_ENV !== 'production') {
       assert(Array.isArray(path), `module path must be a string or an Array.`)
+      // 不能对根module动态注册
       assert(path.length > 0, 'cannot register the root module by using registerModule.')
     }
 
@@ -292,7 +294,6 @@ function resetStoreVM (store, state, hot) {
   const oldVm = store._vm
 
   // bind store public getters
-  //
   store.getters = {}
   // 所有的getter
   const wrappedGetters = store._wrappedGetters
@@ -318,6 +319,7 @@ function resetStoreVM (store, state, hot) {
   // 设置成静默
   Vue.config.silent = true
   // 创建一个vue实例放在store下
+  // 这里才变成响应式
   // state  computed
   store._vm = new Vue({
     data: {
@@ -338,10 +340,12 @@ function resetStoreVM (store, state, hot) {
     if (hot) {
       // dispatch changes in all subscribed watchers
       // to force getter re-evaluation for hot reloading.
+      // 删除引用
       store._withCommit(() => {
         oldVm._data.$$state = null
       })
     }
+    // 调用api销毁
     Vue.nextTick(() => oldVm.$destroy())
   }
 }
@@ -364,7 +368,8 @@ function installModule (store, rootState, path, module, hot) {
     const parentState = getNestedState(rootState, path.slice(0, -1))
     // 当前module的key
     const moduleName = path[path.length - 1]
-    // ？？？变成响应式？
+    // state和其他的不一样 如果是多个module就是要一直点下去 而不是通过键拼接命名空间+/
+    // 只是一个普通的添加
     store._withCommit(() => {
       Vue.set(parentState, moduleName, module.state)
     })
@@ -373,6 +378,8 @@ function installModule (store, rootState, path, module, hot) {
   // 把dispatch commit getters state 都包装一层，对应的key做改变 之后再调用这些方法
   const local = module.context = makeLocalContext(store, namespace, path)
 
+
+  // 调用register的时候把local传入  其中在定义mutations的时候入参拿到的state就是local里面的
   // 对mutations进行遍历
   // 回调 第一个参数是value 第二个参数是key
   module.forEachMutation((mutation, key) => {

@@ -65,6 +65,7 @@ export default class ModuleCollection {
       // 遍历子module
       forEachValue(rawModule.modules, (rawChildModule, key) => {
         // 拼接path 继续添加递归调用register 建立父子关系
+        // 当前path继续添加key key就是modules中的对应的key
         this.register(path.concat(key), rawChildModule, runtime)
       })
     }

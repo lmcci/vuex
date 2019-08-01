@@ -2,7 +2,7 @@ export const mapState = normalizeNamespace((namespace, states) => {
   const res = {}
   // 序列化state然后遍历
   normalizeMap(states).forEach(({ key, val }) => {
-    // 每个state的key当做参数 放在res中一个函数 其实最后会在computed中
+    // 每个state的key当做参数 放在res中一个函数 其实最后会在computed中 计算属性的值是一个函数 使用的时候是使用这个函数的返回值
     res[key] = function mappedState () {
       //
       let state = this.$store.state
@@ -14,6 +14,7 @@ export const mapState = normalizeNamespace((namespace, states) => {
           return
         }
         // 从module中拿到state getters 后面当成参数传入
+        // 就是之前构建的local
         state = module.context.state
         getters = module.context.getters
       }
@@ -30,6 +31,7 @@ export const mapState = normalizeNamespace((namespace, states) => {
   return res
 })
 
+// 下面的都相同
 export const mapMutations = normalizeNamespace((namespace, mutations) => {
   const res = {}
   normalizeMap(mutations).forEach(({ key, val }) => {
@@ -105,7 +107,9 @@ function normalizeMap (map) {
     : Object.keys(map).map(key => ({ key, val: map[key] }))
 }
 
+// 格式化调用的参数
 function normalizeNamespace (fn) {
+// 使用的时候调用 如 mapState(a, b) 就是走这个方法
   return (namespace, map) => {
     // 修正参数位置
     if (typeof namespace !== 'string') {
