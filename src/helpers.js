@@ -1,21 +1,29 @@
 export const mapState = normalizeNamespace((namespace, states) => {
   const res = {}
+  // 序列化state然后遍历
   normalizeMap(states).forEach(({ key, val }) => {
+    // 每个state的key当做参数 放在res中一个函数 其实最后会在computed中
     res[key] = function mappedState () {
+      //
       let state = this.$store.state
       let getters = this.$store.getters
       if (namespace) {
+        // 用命名空间的 拿到命名空间对应的module
         const module = getModuleByNamespace(this.$store, 'mapState', namespace)
         if (!module) {
           return
         }
+        // 从module中拿到state getters 后面当成参数传入
         state = module.context.state
         getters = module.context.getters
       }
+      // 如果state的函数 就调用并改变上下文
+      // 不是函数直接返回值
       return typeof val === 'function'
         ? val.call(this, state, getters)
         : state[val]
     }
+
     // mark vuex getter for devtools
     res[key].vuex = true
   })
@@ -27,6 +35,7 @@ export const mapMutations = normalizeNamespace((namespace, mutations) => {
   normalizeMap(mutations).forEach(({ key, val }) => {
     res[key] = function mappedMutation (...args) {
       let commit = this.$store.commit
+      // 有命名空间的重新赋值
       if (namespace) {
         const module = getModuleByNamespace(this.$store, 'mapMutations', namespace)
         if (!module) {
@@ -89,6 +98,7 @@ export const createNamespacedHelpers = (namespace) => ({
   mapActions: mapActions.bind(null, namespace)
 })
 
+// 格式化一个对象 [{key:k, val:v}]
 function normalizeMap (map) {
   return Array.isArray(map)
     ? map.map(key => ({ key, val: key }))
@@ -97,18 +107,23 @@ function normalizeMap (map) {
 
 function normalizeNamespace (fn) {
   return (namespace, map) => {
+    // 修正参数位置
     if (typeof namespace !== 'string') {
       map = namespace
       namespace = ''
     } else if (namespace.charAt(namespace.length - 1) !== '/') {
+      // 不以/结尾的添加上
       namespace += '/'
     }
     return fn(namespace, map)
   }
 }
 
+// 通过命名空间获得module对象
 function getModuleByNamespace (store, helper, namespace) {
+  // 初始化的时候有构造一个map 这里可以直接取
   const module = store._modulesNamespaceMap[namespace]
+  // 如果没有就警告
   if (process.env.NODE_ENV !== 'production' && !module) {
     console.error(`[vuex] module namespace not found in ${helper}(): ${namespace}`)
   }
